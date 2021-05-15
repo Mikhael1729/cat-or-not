@@ -1,6 +1,13 @@
 import numpy as np
+import PyQt5
+import matplotlib
+import matplotlib.pyplot as plt
 import copy
+import os
+
 from lr_utils import load_dataset
+from PIL import Image
+from scipy import ndimage
 
 def sigmoid(z):
   """
@@ -125,9 +132,28 @@ def compute_model(X_train, Y_train, X_test, Y_test, num_iterations=2000, learnin
     "num_iterations": num_iterations
   }
 
+  return d
+
+def predict_image(model, image_name, num_px=64):
+  file_path = os.path.join("images", image_name)
+  image = Image.open(file_path).resize((num_px, num_px))
+  image = np.array(image)
+
+  plt.imshow(image)
+  plt.show()
+  image = image / 255.
+  image = image.reshape((1, num_px * num_px * 3)).T
+  prediction = predict(model["w"], model["b"], image)
+  prediction_result = str(np.squeeze(prediction))
+  prediction_class = classes[int(np.squeeze(prediction)),].decode("utf-8")
+
+  print(f"y = {prediction_result}, the model says is a \"{prediction_class}\"")
+
 if __name__ == "__main__":
   # Load the data
   train_set_x_orig, train_set_y, test_set_x_orig, test_set_y, classes = load_dataset()
+
+  print("classes: ", classes)
 
   train_set_x_flatten = train_set_x_orig.reshape(train_set_x_orig.shape[0], -1).T
   test_set_x_flatten = test_set_x_orig.reshape(test_set_x_orig.shape[0], -1).T
@@ -135,6 +161,7 @@ if __name__ == "__main__":
   # Standarize data set.
   train_set_x = train_set_x_flatten / 255.
   test_set_x = test_set_x_flatten / 255.
+
 
   logistic_regression_model = compute_model(
     train_set_x,
@@ -145,3 +172,19 @@ if __name__ == "__main__":
     learning_rate=0.005,
     print_cost=True
   )
+
+  # Show a wrongly classified image
+  image_pixels, index = train_set_x_orig.shape[1], 1
+
+  label = test_set_y[0, index]
+  prediction_index = int(logistic_regression_model['Y_prediction_test'][0,index])
+  class_name = classes[prediction_index].decode("utf-8")
+
+  print(f"y = {label}, the model predicted that is a {class_name}")
+
+  image = test_set_x[:, index].reshape(image_pixels, image_pixels, 3)
+  plt.imshow(image)
+  plt.show()
+
+  # Predict image
+  predict_image(logistic_regression_model, "gary.jpg", image_pixels)
